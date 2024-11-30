@@ -57,7 +57,7 @@ func main() {
 	}
 
 	calls := n / maxRows
-	for call := 0; call < calls; call++ {
+	for call := calls - 1; call >= 0; call-- {
 		err := downloadPage(dest, call*maxRows, maxRows)
 		if err != nil {
 			fmt.Println("Error downloading page:", err)
@@ -100,7 +100,9 @@ func downloadPage(dest string, idx int, n int) error {
 		return nil
 	}
 
-	for _, image := range bingResp.Images {
+	// Download the images in inverse order to keep the most recent image with the most recent timestamp
+	for i := len(bingResp.Images) - 1; i >= 0; i-- {
+		image := bingResp.Images[i]
 		filename := getFilename(image.UrlBase)
 		filename = filepath.Join(dest, filename)
 		if files.Exists(filename) {

@@ -14,6 +14,8 @@ import (
 
 const bingoURL = "https://bing.gifposter.com"
 
+var verbose bool
+
 func main() {
 	var n int
 	flag.IntVar(&n, "n", 1, "Number of images previous today.")
@@ -23,6 +25,8 @@ func main() {
 
 	var dest string
 	flag.StringVar(&dest, "dest", ".", "Folder to save the images.")
+
+	flag.BoolVar(&verbose, "v", false, "Verbose mode.")
 
 	flag.Parse()
 
@@ -78,9 +82,16 @@ func main() {
 		fmt.Println("Error rolling over:", err)
 		return
 	}
+
+	fmt.Println("Done!")
 }
 
 func scrapeImage(url, dest string, count int) error {
+	count--
+	if count < 0 {
+		return nil
+	}
+
 	doc, err := loadPage(url)
 	if err != nil {
 		return fmt.Errorf("loading page: %w", err)
@@ -99,24 +110,6 @@ func scrapeImage(url, dest string, count int) error {
 		return fmt.Errorf("image not found: missing element with id 'bing_wallpaper'")
 	}
 
-	// img = strings.ReplaceAll(img, "_1920x1080", "_uhd")
-	splits := strings.Split(img, "/")
-	filename := filepath.Join(dest, splits[len(splits)-1])
-	if !files.Exists(filename) {
-		err := files.DownloadImage(img, filename)
-		if err != nil {
-			return fmt.Errorf("downloading image: %w", err)
-		}
-		fmt.Printf("Picture downloaded successfully!: %s\n", filename)
-	} else {
-		fmt.Printf("(Skip) Picture already downloaded: %s\n", filename)
-	}
-
-	count--
-	if count == 0 {
-		return nil
-	}
-
 	var next string
 	doc.Find(`.icon.next`).Each(func(i int, s *goquery.Selection) {
 		attr, exists := s.Attr("href")
@@ -126,11 +119,34 @@ func scrapeImage(url, dest string, count int) error {
 	})
 
 	if next == "" {
-		fmt.Println("No next URL found")
+		fmt.Println("No next URL found. Finishing.")
 		return nil
 	}
 
-	return scrapeImage(bingoURL+next, dest, count)
+	err = scrapeImage(bingoURL+next, dest, count)
+	if err != nil {
+		return fmt.Errorf("scraping image: %w", err)
+	}
+
+	// I do the download last, because I want the most recent image to be have the most recent timestamp
+	splits := strings.Split(img, "/")
+	filename := filepath.Join(dest, splits[len(splits)-1])
+	if files.Exists(filename) {
+		if verbose {
+			fmt.Printf("(Skip) Picture already downloaded: %s\n", filename)
+		}
+		return nil
+	}
+
+	err = files.DownloadImage(img, filename)
+	if err != nil {
+		return fmt.Errorf("downloading image: %w", err)
+	}
+	if verbose {
+		fmt.Printf("Picture downloaded successfully!: %s\n", filename)
+	}
+
+	return nil
 }
 
 func loadPage(url string) (*goquery.Document, error) {

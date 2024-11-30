@@ -17,7 +17,7 @@ func RollOver(dest string, roll int) error {
 
 	if len(files) > roll {
 		sort.Slice(files, func(i, j int) bool {
-			return files[i].ModTime().Before(files[j].ModTime())
+			return files[i].ModTime().After(files[j].ModTime())
 		})
 
 		for i := roll; i < len(files); i++ {

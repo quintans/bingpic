@@ -12,6 +12,7 @@ Arguments:
 - n: Number of picture we want to download (default is 1)
 - dest: Directory where we store the downloaded files (defaults to current dir)
 - roll: number of files we keep on the dest directory (default is 100)
+- v: verbose
 
 Eg:
 ```sh
